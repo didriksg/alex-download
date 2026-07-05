@@ -205,7 +205,7 @@ class App:
         self.header.pack(pady=(36, 4))
         ctk.CTkLabel(
             root,
-            text="Henter nye videoer fra YouTube",
+            text="Videonedlasting fra YouTube",
             font=ctk.CTkFont(size=13),
             text_color="gray60",
         ).pack(pady=(0, 24))
@@ -353,7 +353,7 @@ class App:
                 self.bar.set(rest[0])
             elif kind == "title":
                 name = rest[0]
-                self.root.title(name)
+                self.root.title(f"{name} - videonedlasting")
                 size = 28 if len(name) <= 18 else 22
                 self.header.configure(
                     text=name, font=ctk.CTkFont(size=size, weight="bold")
