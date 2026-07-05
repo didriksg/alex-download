@@ -210,6 +210,9 @@ class App:
         self.bar.pack(fill="x", padx=56, pady=(24, 10))
         self.status = ctk.CTkLabel(root, text="Starter ...", wraplength=440)
         self.status.pack(padx=24)
+        self.status_color = self.status.cget("text_color")
+        self.normal_font = ctk.CTkFont(size=13)
+        self.warn_font = ctk.CTkFont(size=15, weight="bold")
 
         bottom = ctk.CTkFrame(root, fg_color="transparent")
         bottom.pack(side="bottom", fill="x", pady=(0, 16))
@@ -248,13 +251,20 @@ class App:
         else:
             self.msgs.put(("ready",))
 
+    def set_status(self, text, warn=False):
+        self.status.configure(
+            text=text,
+            text_color="#ffa726" if warn else self.status_color,
+            font=self.warn_font if warn else self.normal_font,
+        )
+
     def choose_where(self, value):
         self.choice = "usb" if "minnepinne" in value.lower() else "pc"
         save_choice(self.choice)
         if self.choice == "usb" and not find_usb_drives():
-            self.status.configure(text="Sett inn minnepinnen før du henter videoer.")
+            self.set_status("Sett inn minnepinnen før du henter videoer.", warn=True)
         else:
-            self.status.configure(text="Trykk på knappen for å hente nye videoer.")
+            self.set_status("Trykk på knappen for å hente nye videoer.")
 
     def resolve_dest(self):
         """Path to save into, or None if the chosen USB stick is missing."""
@@ -269,7 +279,7 @@ class App:
     def open_folder(self):
         dest = self.resolve_dest()
         if dest is None:
-            self.status.configure(text="Fant ingen minnepinne. Sett den inn og prøv igjen.")
+            self.set_status("Fant ingen minnepinne. Sett den inn og prøv igjen.", warn=True)
             return
         os.makedirs(dest, exist_ok=True)
         if sys.platform == "win32":
@@ -281,54 +291,55 @@ class App:
         if self.downloading:
             self.cancel.set()
             self.button.configure(state="disabled")
-            self.status.configure(text="Stopper ...")
+            self.set_status("Stopper ...")
         else:
             self.start()
 
     def start(self):
         dest = self.resolve_dest()
         if dest is None:
-            self.status.configure(text="Fant ingen minnepinne. Sett den inn og prøv igjen.")
+            self.set_status("Fant ingen minnepinne. Sett den inn og prøv igjen.", warn=True)
             return
         self.downloading = True
         self.cancel.clear()
         self.button.configure(text="Stopp", fg_color="#b3261e", hover_color="#8c1d18")
         self.bar.set(0)
-        self.status.configure(text="Ser etter nye videoer ...")
+        self.set_status("Ser etter nye videoer ...")
         threading.Thread(target=self.worker, args=(dest,), daemon=True).start()
 
     def worker(self, dest):
         try:
             n, ok = download_new_videos(dest, load_channels(), self.msgs.put, self.cancel)
+            warn = False
             if self.cancel.is_set():
                 text = f"Stoppet. {n} videoer ble lagret."
             elif not ok:
-                text = f"Noe gikk galt. {n} videoer ble lagret. Prøv igjen senere."
+                text, warn = f"Noe gikk galt. {n} videoer ble lagret. Prøv igjen senere.", True
             elif n == 0:
                 text = "Ingen nye videoer denne gangen."
             else:
                 text = f"Ferdig! {n} nye videoer lagret."
         except Exception:
-            text = "Noe gikk galt. Sjekk internett og prøv igjen."
-        self.msgs.put(("done", text))
+            text, warn = "Noe gikk galt. Sjekk internett og prøv igjen.", True
+        self.msgs.put(("done", text, warn))
 
     def poll(self):
         while not self.msgs.empty():
             kind, *rest = self.msgs.get_nowait()
             if kind == "status":
-                self.status.configure(text=rest[0])
+                self.set_status(rest[0])
             elif kind == "progress":
                 self.bar.set(rest[0])
             elif kind == "ready":
                 self.button.configure(state="normal")
-                self.status.configure(text="Trykk på knappen for å hente nye videoer.")
+                self.set_status("Trykk på knappen for å hente nye videoer.")
             elif kind == "done":
                 self.downloading = False
                 self.button.configure(
                     state="normal", text="Hent nye videoer", **self.button_colors
                 )
                 self.bar.set(0)
-                self.status.configure(text=rest[0])
+                self.set_status(rest[0], warn=len(rest) > 1 and rest[1])
             elif kind == "quit":
                 self.root.destroy()
                 return
