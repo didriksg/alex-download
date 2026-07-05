@@ -1,5 +1,6 @@
 .venv/
 _version.py
+mappe.txt
 __pycache__/
 dist/
 build/

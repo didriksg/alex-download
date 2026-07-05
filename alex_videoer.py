@@ -43,25 +43,26 @@ def load_channels():
     return urls or DEFAULT_CHANNELS
 
 
-def find_usb_drives():
-    if os.environ.get("ALEX_USB_DIR"):
-        return [os.environ["ALEX_USB_DIR"]]
-    if sys.platform == "win32":
-        import ctypes
+DEST_FILE = os.path.join(APP_DIR, "mappe.txt")
 
-        k32 = ctypes.windll.kernel32
-        bitmask = k32.GetLogicalDrives()
-        return [
-            f"{chr(65 + i)}:\\"
-            for i in range(26)
-            if bitmask & (1 << i) and k32.GetDriveTypeW(f"{chr(65 + i)}:\\") == 2
-        ]
-    # ponytail: macOS-gren kun for utvikling; sluttbrukeren er på Windows
-    return [
-        os.path.join("/Volumes", d)
-        for d in os.listdir("/Volumes")
-        if d != "Macintosh HD"
-    ]
+
+def load_dest():
+    try:
+        with open(DEST_FILE, encoding="utf-8") as f:
+            p = f.read().strip()
+        if p and os.path.isdir(p):
+            return p
+    except OSError:
+        pass
+    return os.path.join(os.path.expanduser("~"), "Videos")
+
+
+def save_dest(p):
+    try:
+        with open(DEST_FILE, "w", encoding="utf-8") as f:
+            f.write(p)
+    except OSError:
+        pass
 
 
 def download_new_videos(dest_root, channels, event_cb):
@@ -148,8 +149,9 @@ class App:
     def __init__(self, root):
         self.root = root
         self.msgs = queue.Queue()
+        self.dest = load_dest()
         root.title("Alex Videoer")
-        root.geometry("520x360")
+        root.geometry("520x400")
         root.resizable(False, False)
         if FROZEN:
             root.iconbitmap(os.path.join(sys._MEIPASS, "icon.ico"))
@@ -159,7 +161,7 @@ class App:
         ).pack(pady=(36, 4))
         ctk.CTkLabel(
             root,
-            text="Nye videoer fra YouTube, rett på minnepinnen",
+            text="Henter nye videoer fra YouTube",
             font=ctk.CTkFont(size=13),
             text_color="gray60",
         ).pack(pady=(0, 24))
@@ -178,18 +180,28 @@ class App:
         self.bar.pack(fill="x", padx=56, pady=(24, 10))
         self.status = ctk.CTkLabel(root, text="Starter ...", wraplength=440)
         self.status.pack(padx=24)
+
+        bottom = ctk.CTkFrame(root, fg_color="transparent")
+        bottom.pack(side="bottom", fill="x", pady=(0, 16))
+        self.dest_label = ctk.CTkLabel(
+            bottom, text="", font=ctk.CTkFont(size=11), text_color="gray50"
+        )
+        self.dest_label.pack(pady=(0, 6))
+        small = {
+            "font": ctk.CTkFont(size=13),
+            "height": 32,
+            "fg_color": "gray25",
+            "hover_color": "gray30",
+        }
+        row = ctk.CTkFrame(bottom, fg_color="transparent")
+        row.pack()
         ctk.CTkButton(
-            root,
-            text="Åpne videomappen",
-            font=ctk.CTkFont(size=13, underline=True),
-            fg_color="transparent",
-            text_color="gray60",
-            hover=False,
-            width=140,
-            height=28,
-            command=self.open_folder,
-        ).pack(side="bottom", pady=(0, 14))
-        self.drive_buttons = []
+            row, text="Åpne videomappen", command=self.open_folder, **small
+        ).pack(side="left", padx=6)
+        ctk.CTkButton(
+            row, text="Velg mappe", command=self.choose_folder, **small
+        ).pack(side="left", padx=6)
+        self.show_dest()
         root.after(150, self.poll)
         threading.Thread(target=self.update_worker, daemon=True).start()
 
@@ -202,60 +214,51 @@ class App:
         else:
             self.msgs.put(("ready",))
 
-    def start(self):
-        self.pick_drive(self.run)
+    def show_dest(self):
+        self.dest_label.configure(
+            text=f"Videoene lagres i: {os.path.join(self.dest, 'Videoer')}"
+        )
+
+    def videos_folder(self):
+        folder = os.path.join(self.dest, "Videoer")
+        os.makedirs(folder, exist_ok=True)
+        return folder
 
     def open_folder(self):
-        def action(drive):
-            self.clear_drive_buttons()
-            folder = os.path.join(drive, "Videoer")
-            os.makedirs(folder, exist_ok=True)
-            if sys.platform == "win32":
-                os.startfile(folder)
-            else:
-                subprocess.run(["open", folder])
-
-        self.pick_drive(action)
-
-    def pick_drive(self, action):
-        self.clear_drive_buttons()
-        drives = find_usb_drives()
-        if not drives:
-            self.status.configure(
-                text="Fant ingen minnepinne. Sett inn minnepinnen og prøv igjen."
-            )
-        elif len(drives) == 1:
-            action(drives[0])
+        folder = self.videos_folder()
+        if sys.platform == "win32":
+            os.startfile(folder)
         else:
-            self.status.configure(text="Fant flere minnepinner. Hvilken vil du bruke?")
-            for d in drives:
-                b = ctk.CTkButton(self.root, text=d, width=120, command=lambda d=d: action(d))
-                b.pack(pady=3)
-                self.drive_buttons.append(b)
+            subprocess.run(["open", folder])
 
-    def clear_drive_buttons(self):
-        for b in self.drive_buttons:
-            b.destroy()
-        self.drive_buttons = []
+    def choose_folder(self):
+        from tkinter import filedialog
 
-    def run(self, drive):
-        self.clear_drive_buttons()
+        p = filedialog.askdirectory(
+            initialdir=self.dest, title="Velg hvor videoene skal lagres"
+        )
+        if p:
+            self.dest = os.path.normpath(p)
+            save_dest(self.dest)
+            self.show_dest()
+
+    def start(self):
         self.button.configure(state="disabled")
         self.bar.set(0)
         self.status.configure(text="Ser etter nye videoer ...")
-        threading.Thread(target=self.worker, args=(drive,), daemon=True).start()
+        threading.Thread(target=self.worker, args=(self.dest,), daemon=True).start()
 
-    def worker(self, drive):
+    def worker(self, dest):
         try:
-            n, ok = download_new_videos(drive, load_channels(), self.msgs.put)
+            n, ok = download_new_videos(dest, load_channels(), self.msgs.put)
             if not ok:
                 text = f"Noe gikk galt. {n} videoer ble lagret. Prøv igjen senere."
             elif n == 0:
                 text = "Ingen nye videoer denne gangen."
             else:
-                text = f"Ferdig! {n} nye videoer lagret. Du kan trygt ta ut minnepinnen."
+                text = f"Ferdig! {n} nye videoer lagret."
         except Exception:
-            text = "Noe gikk galt. Sjekk internett og minnepinnen, og prøv igjen."
+            text = "Noe gikk galt. Sjekk internett og prøv igjen."
         self.msgs.put(("done", text))
 
     def poll(self):
@@ -267,7 +270,7 @@ class App:
                 self.bar.set(rest[0])
             elif kind == "ready":
                 self.button.configure(state="normal")
-                self.status.configure(text="Sett inn minnepinnen og trykk på knappen.")
+                self.status.configure(text="Trykk på knappen for å hente nye videoer.")
             elif kind == "done":
                 self.button.configure(state="normal")
                 self.bar.set(0)

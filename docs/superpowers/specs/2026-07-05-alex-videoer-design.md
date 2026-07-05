@@ -1,15 +1,16 @@
 # Alex Videoer - design
 
 En Windows-app for en bruker uten teknisk erfaring: last ned nye videoer fra
-faste YouTube-kanaler til en minnepinne, med en knapp.
+faste YouTube-kanaler, med en knapp.
 
 ## Brukeropplevelse
 
-- Alex dobbeltklikker `Alex Videoer.exe` (ligger på minnepinnen).
-- Ett vindu, en stor knapp: **Hent nye videoer**.
-- Fremdrift vises som en tekstlinje ("Laster ned: <tittel> 43 %").
-- Ferdig: "Ferdig! N nye videoer lagret. Du kan trygt ta ut minnepinnen."
-- Ingen minnepinne: "Sett inn minnepinnen og prøv igjen."
+- Alex dobbeltklikker `Alex Videoer.exe` (f.eks. på skrivebordet).
+- Ett vindu, en stor knapp: **Hent nye videoer**, med fremdriftslinje og
+  statustekst under.
+- To småknapper nederst: **Åpne videomappen** (åpner målmappen i Utforsker)
+  og **Velg mappe** (mappevelger; valget huskes).
+- Ferdig: "Ferdig! N nye videoer lagret."
 - Feil (nett nede o.l.): "Noe gikk galt, prøv igjen senere" + antall som lyktes.
   Mislykkede videoer arkiveres ikke, så neste kjøring prøver dem igjen.
 
@@ -18,12 +19,12 @@ faste YouTube-kanaler til en minnepinne, med en knapp.
 - **Kanaler:** `channels.txt` ved siden av exe-fila, en URL per linje.
   Redigeres i Notisblokk, ingen ny bygging. Mangler fila brukes innebygd
   standardliste (kanalen `https://www.youtube.com/@AlexSkoog-ks1pl`).
-- **Minnepinne:** Windows-API (GetDriveType == DRIVE_REMOVABLE). Nøyaktig én:
-  brukes. Ingen: melding. Flere: enkel velger. macOS-fallback (/Volumes) kun
-  for utvikling/test.
-- **Nedlasting:** yt-dlp som Python-bibliotek. `download_archive` ligger PÅ
-  pinnen (`Videoer/.downloaded.txt`) slik at "bare nye videoer" virker og
-  pinnen er selvforsynt. Filer: `Videoer/<Kanal>/<Tittel>.mp4`, maks 1080p,
+- **Målmappe:** velges med vanlig mappevelger, lagres i `mappe.txt` ved siden
+  av exe-fila. Standard: `~/Videos`. Videoene havner i `Videoer/` inni valgt
+  mappe (en minnepinne kan fortsatt velges som mål).
+- **Nedlasting:** yt-dlp som Python-bibliotek. `download_archive` ligger i
+  målmappen (`Videoer/.downloaded.txt`) slik at "bare nye videoer" virker
+  per målmappe. Filer: `Videoer/<Kanal>/<Tittel>.mp4`, maks 1080p,
   MP4 (ffmpeg buntet for sammenslåing av lyd/bilde).
 - **JS-runtime:** yt-dlp krever nå en JavaScript-runtime for YouTube
   (`yt-dlp[default]` + Deno). Deno buntes inn i exe-fila og pekes på via
