@@ -178,6 +178,17 @@ class App:
         self.bar.pack(fill="x", padx=56, pady=(24, 10))
         self.status = ctk.CTkLabel(root, text="Starter ...", wraplength=440)
         self.status.pack(padx=24)
+        ctk.CTkButton(
+            root,
+            text="Åpne videomappen",
+            font=ctk.CTkFont(size=13, underline=True),
+            fg_color="transparent",
+            text_color="gray60",
+            hover=False,
+            width=140,
+            height=28,
+            command=self.open_folder,
+        ).pack(side="bottom", pady=(0, 14))
         self.drive_buttons = []
         root.after(150, self.poll)
         threading.Thread(target=self.update_worker, daemon=True).start()
@@ -192,6 +203,21 @@ class App:
             self.msgs.put(("ready",))
 
     def start(self):
+        self.pick_drive(self.run)
+
+    def open_folder(self):
+        def action(drive):
+            self.clear_drive_buttons()
+            folder = os.path.join(drive, "Videoer")
+            os.makedirs(folder, exist_ok=True)
+            if sys.platform == "win32":
+                os.startfile(folder)
+            else:
+                subprocess.run(["open", folder])
+
+        self.pick_drive(action)
+
+    def pick_drive(self, action):
         self.clear_drive_buttons()
         drives = find_usb_drives()
         if not drives:
@@ -199,11 +225,11 @@ class App:
                 text="Fant ingen minnepinne. Sett inn minnepinnen og prøv igjen."
             )
         elif len(drives) == 1:
-            self.run(drives[0])
+            action(drives[0])
         else:
             self.status.configure(text="Fant flere minnepinner. Hvilken vil du bruke?")
             for d in drives:
-                b = ctk.CTkButton(self.root, text=d, width=120, command=lambda d=d: self.run(d))
+                b = ctk.CTkButton(self.root, text=d, width=120, command=lambda d=d: action(d))
                 b.pack(pady=3)
                 self.drive_buttons.append(b)
 
