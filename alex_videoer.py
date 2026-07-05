@@ -47,28 +47,46 @@ def load_channels():
 DEST_FILE = os.path.join(APP_DIR, "folder.txt")
 
 
-def load_dest():
+def load_choice():
+    """Where to save: "pc" (~/Videos) or "usb" (first USB stick)."""
     try:
         with open(DEST_FILE, encoding="utf-8") as f:
-            p = f.read().strip()
-        if p and os.path.isdir(p):
-            return p
+            return "usb" if f.read().strip() == "usb" else "pc"
     except OSError:
-        pass
-    return os.path.join(os.path.expanduser("~"), "Videos")
+        return "pc"
 
 
-def save_dest(p):
+def save_choice(choice):
     try:
         with open(DEST_FILE, "w", encoding="utf-8") as f:
-            f.write(p)
+            f.write(choice)
     except OSError:
         pass
 
 
-def download_new_videos(dest_root, channels, event_cb):
+def find_usb_drives():
+    if sys.platform == "win32":
+        import ctypes
+
+        k32 = ctypes.windll.kernel32
+        bitmask = k32.GetLogicalDrives()
+        return [
+            f"{chr(65 + i)}:\\"
+            for i in range(26)
+            if bitmask & (1 << i) and k32.GetDriveTypeW(f"{chr(65 + i)}:\\") == 2
+        ]
+    # ponytail: macOS branch is dev-only; the end user is on Windows
+    return [
+        os.path.join("/Volumes", d)
+        for d in os.listdir("/Volumes")
+        if d != "Macintosh HD"
+    ]
+
+
+def download_new_videos(dest_root, channels, event_cb, cancel=None):
     """Downloads new videos. Sends ("status", text)/("progress", 0..1) to
-    event_cb. Returns (new_count, all_ok)."""
+    event_cb; a set cancel event stops after the current chunk.
+    Returns (new_count, all_ok)."""
     import yt_dlp
 
     videos_dir = dest_root
@@ -76,6 +94,8 @@ def download_new_videos(dest_root, channels, event_cb):
     done_ids = set()
 
     def hook(d):
+        if cancel is not None and cancel.is_set():
+            raise yt_dlp.utils.DownloadCancelled("stopped by user")
         info = d.get("info_dict") or {}
         title = info.get("title") or ""
         if d["status"] == "downloading":
@@ -107,7 +127,10 @@ def download_new_videos(dest_root, channels, event_cb):
         opts["js_runtimes"] = {"deno": {"path": os.path.join(sys._MEIPASS, "deno.exe")}}
 
     with yt_dlp.YoutubeDL(opts) as ydl:
-        retcode = ydl.download(channels)
+        try:
+            retcode = ydl.download(channels)
+        except yt_dlp.utils.DownloadCancelled:
+            return len(done_ids), True
     return len(done_ids), retcode == 0
 
 
@@ -150,9 +173,11 @@ class App:
     def __init__(self, root):
         self.root = root
         self.msgs = queue.Queue()
-        self.dest = load_dest()
+        self.choice = load_choice()
+        self.cancel = threading.Event()
+        self.downloading = False
         root.title("Alex Videoer")
-        root.geometry("520x360")
+        root.geometry("520x420")
         root.resizable(False, False)
         if FROZEN:
             root.iconbitmap(os.path.join(sys._MEIPASS, "icon.ico"))
@@ -172,9 +197,13 @@ class App:
             font=ctk.CTkFont(size=20, weight="bold"),
             height=56,
             corner_radius=28,
-            command=self.start,
+            command=self.on_button,
             state="disabled",
         )
+        self.button_colors = {
+            "fg_color": self.button.cget("fg_color"),
+            "hover_color": self.button.cget("hover_color"),
+        }
         self.button.pack(fill="x", padx=56)
         self.bar = ctk.CTkProgressBar(root, height=8)
         self.bar.set(0)
@@ -184,20 +213,29 @@ class App:
 
         bottom = ctk.CTkFrame(root, fg_color="transparent")
         bottom.pack(side="bottom", fill="x", pady=(0, 16))
-        small = {
-            "font": ctk.CTkFont(size=13),
-            "height": 32,
-            "fg_color": "gray25",
-            "hover_color": "gray30",
-        }
-        row = ctk.CTkFrame(bottom, fg_color="transparent")
-        row.pack()
+        ctk.CTkLabel(
+            bottom,
+            text="Hvor skal videoene lagres?",
+            font=ctk.CTkFont(size=12),
+            text_color="gray60",
+        ).pack()
+        self.where = ctk.CTkSegmentedButton(
+            bottom,
+            values=["På PC-en", "På minnepinne"],
+            font=ctk.CTkFont(size=13),
+            command=self.choose_where,
+        )
+        self.where.set("På minnepinne" if self.choice == "usb" else "På PC-en")
+        self.where.pack(pady=(4, 12))
         ctk.CTkButton(
-            row, text="Åpne videomappen", command=self.open_folder, **small
-        ).pack(side="left", padx=6)
-        ctk.CTkButton(
-            row, text="Velg mappe", command=self.choose_folder, **small
-        ).pack(side="left", padx=6)
+            bottom,
+            text="Åpne videomappen",
+            command=self.open_folder,
+            font=ctk.CTkFont(size=13),
+            height=32,
+            fg_color="gray25",
+            hover_color="gray30",
+        ).pack()
         root.after(150, self.poll)
         threading.Thread(target=self.update_worker, daemon=True).start()
 
@@ -210,37 +248,61 @@ class App:
         else:
             self.msgs.put(("ready",))
 
-    def videos_folder(self):
-        os.makedirs(self.dest, exist_ok=True)
-        return self.dest
+    def choose_where(self, value):
+        self.choice = "usb" if "minnepinne" in value.lower() else "pc"
+        save_choice(self.choice)
+        if self.choice == "usb" and not find_usb_drives():
+            self.status.configure(text="Sett inn minnepinnen før du henter videoer.")
+        else:
+            self.status.configure(text="Trykk på knappen for å hente nye videoer.")
+
+    def resolve_dest(self):
+        """Path to save into, or None if the chosen USB stick is missing."""
+        if os.environ.get("ALEX_DEST"):  # dev override so tests stay off ~/Videos
+            return os.environ["ALEX_DEST"]
+        if self.choice == "usb":
+            drives = find_usb_drives()
+            # ponytail: first stick wins; add a picker if several sticks becomes real
+            return drives[0] if drives else None
+        return os.path.join(os.path.expanduser("~"), "Videos")
 
     def open_folder(self):
-        folder = self.videos_folder()
+        dest = self.resolve_dest()
+        if dest is None:
+            self.status.configure(text="Fant ingen minnepinne. Sett den inn og prøv igjen.")
+            return
+        os.makedirs(dest, exist_ok=True)
         if sys.platform == "win32":
-            os.startfile(folder)
+            os.startfile(dest)
         else:
-            subprocess.run(["open", folder])
+            subprocess.run(["open", dest])
 
-    def choose_folder(self):
-        from tkinter import filedialog
-
-        p = filedialog.askdirectory(
-            initialdir=self.dest, title="Velg hvor videoene skal lagres"
-        )
-        if p:
-            self.dest = os.path.normpath(p)
-            save_dest(self.dest)
+    def on_button(self):
+        if self.downloading:
+            self.cancel.set()
+            self.button.configure(state="disabled")
+            self.status.configure(text="Stopper ...")
+        else:
+            self.start()
 
     def start(self):
-        self.button.configure(state="disabled")
+        dest = self.resolve_dest()
+        if dest is None:
+            self.status.configure(text="Fant ingen minnepinne. Sett den inn og prøv igjen.")
+            return
+        self.downloading = True
+        self.cancel.clear()
+        self.button.configure(text="Stopp", fg_color="#b3261e", hover_color="#8c1d18")
         self.bar.set(0)
         self.status.configure(text="Ser etter nye videoer ...")
-        threading.Thread(target=self.worker, args=(self.dest,), daemon=True).start()
+        threading.Thread(target=self.worker, args=(dest,), daemon=True).start()
 
     def worker(self, dest):
         try:
-            n, ok = download_new_videos(dest, load_channels(), self.msgs.put)
-            if not ok:
+            n, ok = download_new_videos(dest, load_channels(), self.msgs.put, self.cancel)
+            if self.cancel.is_set():
+                text = f"Stoppet. {n} videoer ble lagret."
+            elif not ok:
                 text = f"Noe gikk galt. {n} videoer ble lagret. Prøv igjen senere."
             elif n == 0:
                 text = "Ingen nye videoer denne gangen."
@@ -261,7 +323,10 @@ class App:
                 self.button.configure(state="normal")
                 self.status.configure(text="Trykk på knappen for å hente nye videoer.")
             elif kind == "done":
-                self.button.configure(state="normal")
+                self.downloading = False
+                self.button.configure(
+                    state="normal", text="Hent nye videoer", **self.button_colors
+                )
                 self.bar.set(0)
                 self.status.configure(text=rest[0])
             elif kind == "quit":

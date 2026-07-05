@@ -4,6 +4,7 @@ import glob
 import os
 import shutil
 import tempfile
+import threading
 
 import yt_dlp
 
@@ -21,6 +22,11 @@ print("Test video:", video_url)
 
 dest = tempfile.mkdtemp(prefix="alexdl")
 try:
+    cancel = threading.Event()
+    cancel.set()  # pre-set: the first hook call must abort the run
+    n0, ok0 = alex_videoer.download_new_videos(dest, [video_url], print, cancel)
+    assert ok0 and n0 == 0, (n0, ok0)
+
     n, ok = alex_videoer.download_new_videos(dest, [video_url], print)
     assert ok and n == 1, (n, ok)
     files = glob.glob(os.path.join(dest, "*", "*.*"))

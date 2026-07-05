@@ -1,8 +1,8 @@
 # Alex Videoer
 
 One-button Windows app that downloads new videos from fixed YouTube channels
-to a folder of your choice (default `~/Videos`, remembered in `folder.txt`).
-The UI is in Norwegian; Alex is the end user.
+to the PC (`~/Videos`) or a USB stick, a remembered two-way toggle. The same
+button stops an ongoing run. The UI is in Norwegian; Alex is the end user.
 Design: `docs/superpowers/specs/2026-07-05-alex-videoer-design.md`.
 
 ## Build and deliver
@@ -30,6 +30,6 @@ offline fallback).
 ```sh
 python3 -m venv .venv && .venv/bin/pip install "yt-dlp[default]" customtkinter
 brew install deno python-tk
-.venv/bin/python test_download.py   # self-check
-.venv/bin/python alex_videoer.py    # run the app
+.venv/bin/python test_download.py                 # self-check
+ALEX_DEST=/tmp/alexdl .venv/bin/python alex_videoer.py  # run the app (dev dest override)
 ```

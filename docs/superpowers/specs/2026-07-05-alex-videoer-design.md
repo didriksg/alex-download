@@ -7,10 +7,11 @@ from fixed YouTube channels with one button. All UI text is Norwegian.
 
 - Alex double-clicks `Alex Videoer.exe` (e.g. on the desktop).
 - One window, one big button: **Hent nye videoer**, with a progress bar and
-  a status line below.
-- Two small buttons at the bottom: **Åpne videomappen** (opens the target
-  folder in Explorer) and **Velg mappe** (folder picker; the choice is
-  remembered).
+  a status line below. While downloading, the same button turns into a red
+  **Stopp** that cancels the run ("Stoppet. N videoer ble lagret.").
+- At the bottom: a two-way toggle **På PC-en / På minnepinne** for where
+  videos are saved (remembered), and an **Åpne videomappen** button that
+  opens the target folder in Explorer.
 - Done: "Ferdig! N nye videoer lagret."
 - Errors (network down etc.): "Noe gikk galt, prøv igjen senere" plus the
   count that succeeded. Failed videos are not archived, so the next run
@@ -22,9 +23,10 @@ from fixed YouTube channels with one button. All UI text is Norwegian.
   the local copy next to the exe is the offline fallback, and a baked-in
   default list (`https://www.youtube.com/@AlexSkoog-ks1pl`) is the last
   resort.
-- **Target folder:** chosen with the native folder picker, stored in
-  `folder.txt` next to the exe. Default: `~/Videos`. Videos land directly in
-  the chosen folder (a USB stick can still be selected as the target).
+- **Target folder:** a two-way choice stored in `folder.txt` next to the
+  exe: "pc" (default) saves to `~/Videos`, "usb" saves to the first removable
+  drive (GetDriveType == DRIVE_REMOVABLE); a friendly message asks for the
+  stick if none is inserted. Videos land directly in the target folder.
 - **Downloading:** yt-dlp as a Python library. `download_archive` lives in
   the target folder (`.downloaded.txt`) so "only new videos" works per
   target. Files: `<Channel>/<Title>.mp4`, capped at 1080p, MP4 (ffmpeg
