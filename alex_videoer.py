@@ -223,9 +223,10 @@ class App:
             "hover_color": self.button.cget("hover_color"),
         }
         self.button.pack(fill="x", padx=56)
-        self.bar = ctk.CTkProgressBar(root, height=8)
-        self.bar.set(0)
+        self.bar = ctk.CTkProgressBar(root, height=8, mode="indeterminate")
         self.bar.pack(fill="x", padx=56, pady=(24, 10))
+        self.bar.start()  # spinner until the channel name is resolved
+        self.spinning = True
         self.status = ctk.CTkLabel(root, text="Starter ...", wraplength=440)
         self.status.pack(padx=24)
         self.status_color = self.status.cget("text_color")
@@ -268,9 +269,14 @@ class App:
             self.msgs.put(("quit",))
             return
         self.msgs.put(("ready",))
-        name = fetch_channel_name()
-        if name:
-            self.msgs.put(("title", name))
+        self.msgs.put(("title", fetch_channel_name()))  # None stops the spinner
+
+    def stop_spinner(self):
+        if self.spinning:
+            self.spinning = False
+            self.bar.stop()
+            self.bar.configure(mode="determinate")
+            self.bar.set(0)
 
     def set_status(self, text, warn=False):
         self.status.configure(
@@ -350,14 +356,17 @@ class App:
             if kind == "status":
                 self.set_status(rest[0])
             elif kind == "progress":
+                self.stop_spinner()
                 self.bar.set(rest[0])
             elif kind == "title":
+                self.stop_spinner()
                 name = rest[0]
-                self.root.title(f"{name} - videonedlasting")
-                size = 28 if len(name) <= 18 else 22
-                self.header.configure(
-                    text=name, font=ctk.CTkFont(size=size, weight="bold")
-                )
+                if name:
+                    self.root.title(f"{name} - videonedlasting")
+                    size = 28 if len(name) <= 18 else 22
+                    self.header.configure(
+                        text=name, font=ctk.CTkFont(size=size, weight="bold")
+                    )
             elif kind == "ready":
                 self.button.configure(state="normal")
                 self.set_status("Trykk på knappen for å hente nye videoer.")
