@@ -1,2 +1,2 @@
-# En YouTube-kanal per linje. Linjer som starter med # ignoreres.
+# One YouTube channel per line. Lines starting with # are ignored.
 https://www.youtube.com/@AlexSkoog-ks1pl
