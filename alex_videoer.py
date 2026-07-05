@@ -132,6 +132,9 @@ def download_new_videos(dest_root, channels, event_cb, cancel=None):
         "outtmpl": os.path.join(videos_dir, "%(channel)s", "%(title)s.%(ext)s"),
         "download_archive": os.path.join(videos_dir, ".downloaded.txt"),
         "windowsfilenames": True,
+        # ponytail: fragment-level parallelism only; multi-video parallel needs
+        # multiple YoutubeDL instances racing the archive file, not worth it
+        "concurrent_fragment_downloads": 4,
         "ignoreerrors": True,
         "retries": 3,
         "quiet": True,
