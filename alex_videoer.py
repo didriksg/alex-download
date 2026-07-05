@@ -83,6 +83,23 @@ def find_usb_drives():
     ]
 
 
+def fetch_channel_name():
+    """Display name of the first channel, or None (e.g. offline)."""
+    import yt_dlp
+
+    try:
+        opts = {"extract_flat": True, "playlist_items": "1", "quiet": True, "no_warnings": True}
+        if FROZEN:
+            opts["js_runtimes"] = {"deno": {"path": os.path.join(sys._MEIPASS, "deno.exe")}}
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            info = ydl.extract_info(
+                load_channels()[0].rstrip("/") + "/videos", download=False
+            )
+        return info.get("channel") or info.get("uploader") or info.get("title")
+    except Exception:
+        return None
+
+
 def download_new_videos(dest_root, channels, event_cb, cancel=None):
     """Downloads new videos. Sends ("status", text)/("progress", 0..1) to
     event_cb; a set cancel event stops after the current chunk.
@@ -182,9 +199,10 @@ class App:
         if FROZEN:
             root.iconbitmap(os.path.join(sys._MEIPASS, "icon.ico"))
 
-        ctk.CTkLabel(
+        self.header = ctk.CTkLabel(
             root, text="Alex sine videoer", font=ctk.CTkFont(size=28, weight="bold")
-        ).pack(pady=(36, 4))
+        )
+        self.header.pack(pady=(36, 4))
         ctk.CTkLabel(
             root,
             text="Henter nye videoer fra YouTube",
@@ -248,8 +266,11 @@ class App:
             self.msgs.put(("status", "Appen er oppdatert og starter på nytt ..."))
             subprocess.Popen([new_exe])
             self.msgs.put(("quit",))
-        else:
-            self.msgs.put(("ready",))
+            return
+        self.msgs.put(("ready",))
+        name = fetch_channel_name()
+        if name:
+            self.msgs.put(("title", name))
 
     def set_status(self, text, warn=False):
         self.status.configure(
@@ -330,6 +351,13 @@ class App:
                 self.set_status(rest[0])
             elif kind == "progress":
                 self.bar.set(rest[0])
+            elif kind == "title":
+                name = rest[0]
+                self.root.title(name)
+                size = 28 if len(name) <= 18 else 22
+                self.header.configure(
+                    text=name, font=ctk.CTkFont(size=size, weight="bold")
+                )
             elif kind == "ready":
                 self.button.configure(state="normal")
                 self.set_status("Trykk på knappen for å hente nye videoer.")

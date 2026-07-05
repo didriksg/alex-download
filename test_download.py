@@ -20,6 +20,10 @@ with yt_dlp.YoutubeDL(
 video_url = list(info["entries"])[0]["url"]
 print("Test video:", video_url)
 
+name = alex_videoer.fetch_channel_name()
+assert name, "channel name fetch failed"
+print("Channel name:", name)
+
 dest = tempfile.mkdtemp(prefix="alexdl")
 try:
     cancel = threading.Event()

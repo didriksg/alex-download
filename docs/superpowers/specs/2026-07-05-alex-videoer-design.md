@@ -6,6 +6,8 @@ from fixed YouTube channels with one button. All UI text is Norwegian.
 ## User experience
 
 - Alex double-clicks `Alex Videoer.exe` (e.g. on the desktop).
+- The window title and header show the first channel's display name (fetched
+  at startup; falls back to "Alex sine videoer" offline).
 - One window, one big button: **Hent nye videoer**, with a progress bar and
   a status line below. While downloading, the same button turns into a red
   **Stopp** that cancels the run ("Stoppet. N videoer ble lagret.").
