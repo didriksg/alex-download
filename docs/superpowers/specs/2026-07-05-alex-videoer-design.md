@@ -15,7 +15,8 @@ from fixed YouTube channels with one button. All UI text is Norwegian.
 - At the bottom: a two-way toggle **På PC-en / På minnepinne** for where
   videos are saved (remembered), and an **Åpne videomappen** button that
   opens the target folder in Explorer.
-- Done: "Ferdig! N nye videoer lagret."
+- Done: "Ferdig! N nye videoer lagret." and the video folder opens by itself.
+- The PC is kept awake while a download runs (SetThreadExecutionState).
 - Errors (network down etc.): "Noe gikk galt, prøv igjen senere" plus the
   count that succeeded. Failed videos are not archived, so the next run
   retries them.

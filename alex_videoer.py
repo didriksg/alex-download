@@ -83,6 +83,24 @@ def find_usb_drives():
     ]
 
 
+def open_path(path):
+    if sys.platform == "win32":
+        os.startfile(path)
+    else:
+        subprocess.run(["open", path])
+
+
+def keep_awake(on):
+    """Stops Windows from sleeping mid-download. Per-thread; call from the worker."""
+    if sys.platform == "win32":
+        import ctypes
+
+        ES_CONTINUOUS, ES_SYSTEM_REQUIRED = 0x80000000, 0x00000001
+        ctypes.windll.kernel32.SetThreadExecutionState(
+            ES_CONTINUOUS | ES_SYSTEM_REQUIRED if on else ES_CONTINUOUS
+        )
+
+
 def fetch_channel_name():
     """Display name of the first channel, or None (e.g. offline)."""
     import yt_dlp
@@ -324,10 +342,7 @@ class App:
             self.set_status("Fant ingen minnepinne. Sett den inn og prøv igjen.", warn=True)
             return
         os.makedirs(dest, exist_ok=True)
-        if sys.platform == "win32":
-            os.startfile(dest)
-        else:
-            subprocess.run(["open", dest])
+        open_path(dest)
 
     def on_button(self):
         if self.downloading:
@@ -351,6 +366,7 @@ class App:
         threading.Thread(target=self.worker, args=(dest,), daemon=True).start()
 
     def worker(self, dest):
+        keep_awake(True)
         try:
             n, ok = download_new_videos(dest, load_channels(), self.msgs.put, self.cancel)
             warn = False
@@ -362,8 +378,11 @@ class App:
                 text = "Ingen nye videoer denne gangen."
             else:
                 text = f"Ferdig! {n} nye videoer lagret."
+                open_path(dest)
         except Exception:
             text, warn = "Noe gikk galt. Sjekk internett og prøv igjen.", True
+        finally:
+            keep_awake(False)
         self.msgs.put(("done", text, warn))
 
     def poll(self):
