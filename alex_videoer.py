@@ -224,10 +224,14 @@ class App:
             "hover_color": self.button.cget("hover_color"),
         }
         self.button.pack(fill="x", padx=56)
-        self.bar = ctk.CTkProgressBar(root, height=8, mode="indeterminate")
-        self.bar.pack(fill="x", padx=56, pady=(24, 10))
+        barframe = ctk.CTkFrame(root, height=8, fg_color="transparent")
+        barframe.pack(fill="x", padx=56, pady=(24, 10))
+        barframe.pack_propagate(False)  # keeps the row's height when the bar hides
+        self.bar = ctk.CTkProgressBar(barframe, height=8, mode="indeterminate")
+        self.bar.pack(fill="both", expand=True)
         self.bar.start()  # spinner until the channel name is resolved
         self.spinning = True
+        self.bar_visible = True
         self.status = ctk.CTkLabel(root, text="Starter ...", wraplength=440)
         self.status.pack(padx=24)
         self.status_color = self.status.cget("text_color")
@@ -271,6 +275,16 @@ class App:
             return
         self.msgs.put(("ready",))
         self.msgs.put(("title", fetch_channel_name()))  # None stops the spinner
+
+    def show_bar(self):
+        if not self.bar_visible:
+            self.bar_visible = True
+            self.bar.pack(fill="both", expand=True)
+
+    def hide_bar(self):
+        if self.bar_visible:
+            self.bar_visible = False
+            self.bar.pack_forget()
 
     def stop_spinner(self):
         if self.spinning:
@@ -331,6 +345,7 @@ class App:
         self.downloading = True
         self.cancel.clear()
         self.button.configure(text="Stopp", fg_color="#b3261e", hover_color="#8c1d18")
+        self.show_bar()
         self.bar.set(0)
         self.set_status("Ser etter nye videoer ...")
         threading.Thread(target=self.worker, args=(dest,), daemon=True).start()
@@ -358,9 +373,11 @@ class App:
                 self.set_status(rest[0])
             elif kind == "progress":
                 self.stop_spinner()
+                self.show_bar()
                 self.bar.set(rest[0])
             elif kind == "title":
                 self.stop_spinner()
+                self.hide_bar()
                 name = rest[0] or "Alex sine videoer"
                 if rest[0]:
                     self.root.title(f"{name} - videonedlasting")
@@ -376,6 +393,7 @@ class App:
                 self.button.configure(
                     state="normal", text="Hent nye videoer", **self.button_colors
                 )
+                self.hide_bar()
                 self.bar.set(0)
                 self.set_status(rest[0], warn=len(rest) > 1 and rest[1])
             elif kind == "quit":
