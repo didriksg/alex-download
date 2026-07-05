@@ -28,11 +28,12 @@ def load_channels():
     try:
         with urllib.request.urlopen(CHANNELS_URL, timeout=5) as r:
             text = r.read().decode("utf-8")
-        try:
-            with open(local, "w", encoding="utf-8") as f:
-                f.write(text)
-        except OSError:
-            pass
+        if FROZEN:  # offline-fallback cache; skipped in dev to keep the repo copy pristine
+            try:
+                with open(local, "w", encoding="utf-8") as f:
+                    f.write(text)
+            except OSError:
+                pass
     except Exception:
         try:
             with open(local, encoding="utf-8") as f:
