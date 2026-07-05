@@ -1,4 +1,4 @@
-name: Bygg Windows-exe
+name: Build Windows exe
 
 on:
   push:
@@ -18,38 +18,38 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Installer avhengigheter
+      - name: Install dependencies
         run: pip install "yt-dlp[default]" customtkinter pyinstaller
 
-      - name: Hent ffmpeg
+      - name: Fetch ffmpeg
         shell: pwsh
         run: |
           curl.exe -L -o ffmpeg.zip https://github.com/yt-dlp/FFmpeg-Builds/releases/latest/download/ffmpeg-master-latest-win64-gpl.zip
           Expand-Archive ffmpeg.zip -DestinationPath ffmpeg
           Copy-Item ffmpeg/*/bin/ffmpeg.exe .
 
-      - name: Hent deno
+      - name: Fetch deno
         shell: pwsh
         run: |
           curl.exe -L -o deno.zip https://github.com/denoland/deno/releases/latest/download/deno-x86_64-pc-windows-msvc.zip
           Expand-Archive deno.zip -DestinationPath denodir
           Copy-Item denodir/deno.exe .
 
-      - name: Sett versjon
+      - name: Set version
         shell: pwsh
         run: Set-Content _version.py "VERSION = $env:GITHUB_RUN_NUMBER"
 
-      - name: Bygg exe
+      - name: Build exe
         run: >
           pyinstaller --onefile --windowed --name "Alex Videoer" --icon icon.ico
           --add-binary "ffmpeg.exe;." --add-binary "deno.exe;." --add-data "icon.ico;."
           --collect-all customtkinter --collect-all yt_dlp_ejs
           alex_videoer.py
 
-      - name: Lag release
+      - name: Create release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: >
           gh release create "v$env:GITHUB_RUN_NUMBER" "dist/Alex Videoer.exe"
-          --title "Alex Videoer v$env:GITHUB_RUN_NUMBER" --notes "Automatisk bygg"
+          --title "Alex Videoer v$env:GITHUB_RUN_NUMBER" --notes "Automated build"

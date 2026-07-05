@@ -1,52 +1,49 @@
 # Alex Videoer - design
 
-En Windows-app for en bruker uten teknisk erfaring: last ned nye videoer fra
-faste YouTube-kanaler, med en knapp.
+A Windows app for a user with no technical experience: download new videos
+from fixed YouTube channels with one button. All UI text is Norwegian.
 
-## Brukeropplevelse
+## User experience
 
-- Alex dobbeltklikker `Alex Videoer.exe` (f.eks. på skrivebordet).
-- Ett vindu, en stor knapp: **Hent nye videoer**, med fremdriftslinje og
-  statustekst under.
-- To småknapper nederst: **Åpne videomappen** (åpner målmappen i Utforsker)
-  og **Velg mappe** (mappevelger; valget huskes).
-- Ferdig: "Ferdig! N nye videoer lagret."
-- Feil (nett nede o.l.): "Noe gikk galt, prøv igjen senere" + antall som lyktes.
-  Mislykkede videoer arkiveres ikke, så neste kjøring prøver dem igjen.
+- Alex double-clicks `Alex Videoer.exe` (e.g. on the desktop).
+- One window, one big button: **Hent nye videoer**, with a progress bar and
+  a status line below.
+- Two small buttons at the bottom: **Åpne videomappen** (opens the target
+  folder in Explorer) and **Velg mappe** (folder picker; the choice is
+  remembered).
+- Done: "Ferdig! N nye videoer lagret."
+- Errors (network down etc.): "Noe gikk galt, prøv igjen senere" plus the
+  count that succeeded. Failed videos are not archived, so the next run
+  retries them.
 
-## Teknisk
+## Technical
 
-- **Kanaler:** `channels.txt` ved siden av exe-fila, en URL per linje.
-  Redigeres i Notisblokk, ingen ny bygging. Mangler fila brukes innebygd
-  standardliste (kanalen `https://www.youtube.com/@AlexSkoog-ks1pl`).
-- **Målmappe:** velges med vanlig mappevelger, lagres i `mappe.txt` ved siden
-  av exe-fila. Standard: `~/Videos`. Videoene havner i `Videoer/` inni valgt
-  mappe (en minnepinne kan fortsatt velges som mål).
-- **Nedlasting:** yt-dlp som Python-bibliotek. `download_archive` ligger i
-  målmappen (`Videoer/.downloaded.txt`) slik at "bare nye videoer" virker
-  per målmappe. Filer: `Videoer/<Kanal>/<Tittel>.mp4`, maks 1080p,
-  MP4 (ffmpeg buntet for sammenslåing av lyd/bilde).
-- **JS-runtime:** yt-dlp krever nå en JavaScript-runtime for YouTube
-  (`yt-dlp[default]` + Deno). Deno buntes inn i exe-fila og pekes på via
+- **Channels:** `channels.txt` in the repo, fetched from GitHub on every run;
+  the local copy next to the exe is the offline fallback, and a baked-in
+  default list (`https://www.youtube.com/@AlexSkoog-ks1pl`) is the last
+  resort.
+- **Target folder:** chosen with the native folder picker, stored in
+  `folder.txt` next to the exe. Default: `~/Videos`. Videos land directly in
+  the chosen folder (a USB stick can still be selected as the target).
+- **Downloading:** yt-dlp as a Python library. `download_archive` lives in
+  the target folder (`.downloaded.txt`) so "only new videos" works per
+  target. Files: `<Channel>/<Title>.mp4`, capped at 1080p, MP4 (ffmpeg
+  bundled for merging audio/video).
+- **JS runtime:** yt-dlp now requires a JavaScript runtime for YouTube
+  (`yt-dlp[default]` + Deno). Deno is bundled into the exe and wired up via
   `js_runtimes`.
-- **UI:** CustomTkinter, mørkt tema: tittel, stor rund knapp, fremdriftslinje,
-  statuslinje, eget ikon. Norsk tekst.
-- **Pakking:** PyInstaller `--onefile --windowed` på GitHub Actions
-  (windows-latest); ffmpeg og deno buntes inn. Hver push til main publiserer
-  en GitHub-release `v<run_number>` med exe-fila.
-- **Auto-oppdatering:** ved oppstart sjekker appen nyeste release-tag mot
-  innebygd versjonsnummer. Nyere: laster ned exe, bytter (rename-triksene til
-  yt-dlp: kjørende exe kan omdøpes på Windows) og starter seg selv på nytt.
-  Uten nett hoppes sjekken over. Krever offentlig repo.
-- **Kanalliste:** hentes fra `channels.txt` i repoet (raw.githubusercontent)
-  ved hver kjøring; lokal kopi ved siden av exe-fila som reserve, innebygd
-  standardliste som siste utvei.
-- **SmartScreen:** lever exe-fila via minnepinnen (FAT32/exFAT har ingen
-  mark-of-the-web), så Alex aldri ser "Windows protected your PC".
+- **UI:** CustomTkinter, dark theme: title, big rounded button, progress bar,
+  status line, custom icon. Norwegian text.
+- **Packaging:** PyInstaller `--onefile --windowed` on GitHub Actions
+  (windows-latest); ffmpeg and deno are bundled. Every push to main publishes
+  a GitHub release `v<run_number>` with the exe.
+- **Auto-update:** at startup the app compares the newest release tag with
+  its baked-in version number. If newer: download the exe, swap (the yt-dlp
+  rename trick: a running exe can be renamed on Windows) and restart itself.
+  Without network the check is skipped. Requires a public repo.
 
-## Bevisst utelatt
+## Deliberately omitted
 
-Installer, planlagte kjøringer, kvalitetsvalg, flerbrukeroppsett,
-kodesignering (SmartScreen unngås via minnepinne-levering), ffprobe
-(sammenslåing trenger bare ffmpeg). Legges til bare hvis virkeligheten
-krever det.
+Installer, scheduled runs, quality settings, multi-user setup, code signing
+(SmartScreen is avoided via USB-stick delivery), ffprobe (merging only needs
+ffmpeg). Added only if reality demands it.

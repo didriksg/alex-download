@@ -1,4 +1,4 @@
-"""Selvtest: laster ned nyeste video (lav kvalitet) to ganger, sjekker arkivet."""
+"""Self-check: downloads the newest video (low quality) twice, verifies the archive."""
 
 import glob
 import os
@@ -9,7 +9,7 @@ import yt_dlp
 
 import alex_videoer
 
-alex_videoer.FORMAT = "worst"  # liten fil; produksjonsformatet testes ikke her
+alex_videoer.FORMAT = "worst"  # small file; the production format is not tested here
 
 channel = alex_videoer.load_channels()[0]
 with yt_dlp.YoutubeDL(
@@ -17,18 +17,18 @@ with yt_dlp.YoutubeDL(
 ) as ydl:
     info = ydl.extract_info(channel.rstrip("/") + "/videos", download=False)
 video_url = list(info["entries"])[0]["url"]
-print("Testvideo:", video_url)
+print("Test video:", video_url)
 
-dest = tempfile.mkdtemp(prefix="alexusb")
+dest = tempfile.mkdtemp(prefix="alexdl")
 try:
     n, ok = alex_videoer.download_new_videos(dest, [video_url], print)
     assert ok and n == 1, (n, ok)
-    files = glob.glob(os.path.join(dest, "Videoer", "*", "*.*"))
-    assert files, "ingen fil lastet ned"
-    assert os.path.exists(os.path.join(dest, "Videoer", ".downloaded.txt"))
+    files = glob.glob(os.path.join(dest, "*", "*.*"))
+    assert files, "no file downloaded"
+    assert os.path.exists(os.path.join(dest, ".downloaded.txt"))
 
     n2, ok2 = alex_videoer.download_new_videos(dest, [video_url], print)
     assert ok2 and n2 == 0, (n2, ok2)
-    print(f"OK: {files[0]} ({os.path.getsize(files[0])} bytes), andre kjøring hoppet over.")
+    print(f"OK: {files[0]} ({os.path.getsize(files[0])} bytes), second run skipped it.")
 finally:
     shutil.rmtree(dest)

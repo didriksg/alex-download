@@ -1,34 +1,35 @@
 # Alex Videoer
 
-Ett-knapps Windows-app som laster ned nye videoer fra faste YouTube-kanaler
-til en valgfri mappe (standard `~/Videos`, huskes i `mappe.txt`).
+One-button Windows app that downloads new videos from fixed YouTube channels
+to a folder of your choice (default `~/Videos`, remembered in `folder.txt`).
+The UI is in Norwegian; Alex is the end user.
 Design: `docs/superpowers/specs/2026-07-05-alex-videoer-design.md`.
 
-## Bygge og levere
+## Build and deliver
 
-Hver push til `main` bygger `Alex Videoer.exe` og publiserer en GitHub-release
-(v1, v2, ...). Førstegangslevering: last ned exe-fila fra Releases og lever
-den via en minnepinne (FAT32/exFAT gir ingen mark-of-the-web, så SmartScreen
-klager ikke). Legg den f.eks. på skrivebordet hos Alex.
+Every push to `main` builds `Alex Videoer.exe` and publishes a GitHub release
+(v1, v2, ...). First delivery: download the exe from Releases and hand it
+over on a USB stick (FAT32/exFAT carries no mark-of-the-web, so SmartScreen
+stays quiet). Put it on Alex's desktop, for example.
 
-## Oppdateringer
+## Updates
 
-Appen ser etter ny release ved hver oppstart og bytter ut seg selv automatisk.
-Push til `main` (eller kjør workflowen manuelt, f.eks. for å få med ny
-yt-dlp når YouTube endrer seg) er alt som trengs; Alex får oppdateringen
-neste gang han åpner appen.
+The app checks for a new release at every startup and replaces itself
+automatically. Pushing to `main` (or running the workflow manually, e.g. to
+pick up a new yt-dlp when YouTube changes) is all it takes; Alex gets the
+update the next time he opens the app.
 
-## Endre kanaler
+## Changing channels
 
-Rediger `channels.txt` i repoet, en kanal-URL per linje. Appen henter fila
-fra GitHub ved hver kjøring (lokal kopi ved siden av exe-fila brukes som
-reserve uten nett).
+Edit `channels.txt` in the repo, one channel URL per line. The app fetches
+the file from GitHub on every run (the local copy next to the exe is the
+offline fallback).
 
-## Teste lokalt (macOS)
+## Local testing (macOS)
 
 ```sh
 python3 -m venv .venv && .venv/bin/pip install "yt-dlp[default]" customtkinter
 brew install deno python-tk
-.venv/bin/python test_download.py   # selvtest
-.venv/bin/python alex_videoer.py    # kjoer appen
+.venv/bin/python test_download.py   # self-check
+.venv/bin/python alex_videoer.py    # run the app
 ```
