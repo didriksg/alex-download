@@ -193,14 +193,15 @@ class App:
         self.choice = load_choice()
         self.cancel = threading.Event()
         self.downloading = False
-        root.title("Alex Videoer")
+        root.title("Videonedlasting")
         root.geometry("520x420")
         root.resizable(False, False)
         if FROZEN:
             root.iconbitmap(os.path.join(sys._MEIPASS, "icon.ico"))
 
+        # blank until the channel name is fetched; reserves one line of height
         self.header = ctk.CTkLabel(
-            root, text="Alex sine videoer", font=ctk.CTkFont(size=28, weight="bold")
+            root, text=" ", font=ctk.CTkFont(size=28, weight="bold")
         )
         self.header.pack(pady=(36, 4))
         ctk.CTkLabel(
@@ -360,13 +361,13 @@ class App:
                 self.bar.set(rest[0])
             elif kind == "title":
                 self.stop_spinner()
-                name = rest[0]
-                if name:
+                name = rest[0] or "Alex sine videoer"
+                if rest[0]:
                     self.root.title(f"{name} - videonedlasting")
-                    size = 28 if len(name) <= 18 else 22
-                    self.header.configure(
-                        text=name, font=ctk.CTkFont(size=size, weight="bold")
-                    )
+                size = 28 if len(name) <= 18 else 22
+                self.header.configure(
+                    text=name, font=ctk.CTkFont(size=size, weight="bold")
+                )
             elif kind == "ready":
                 self.button.configure(state="normal")
                 self.set_status("Trykk på knappen for å hente nye videoer.")
