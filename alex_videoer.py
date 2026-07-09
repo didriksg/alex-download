@@ -22,8 +22,29 @@ FROZEN = getattr(sys, "frozen", False)
 APP_DIR = os.path.dirname(sys.executable if FROZEN else os.path.abspath(__file__))
 
 
+def _running_as_msix():
+    if not (FROZEN and sys.platform == "win32"):
+        return False
+    import ctypes
+
+    try:
+        length = ctypes.c_uint32(0)
+        rc = ctypes.windll.kernel32.GetCurrentPackageFullName(ctypes.byref(length), None)
+        return rc != 15700  # APPMODEL_ERROR_NO_PACKAGE
+    except (AttributeError, OSError):
+        return False
+
+
+MSIX = _running_as_msix()
+if MSIX:  # the package dir is read-only; keep mutable files in LocalAppData
+    DATA_DIR = os.path.join(os.environ["LOCALAPPDATA"], "Alex Videoer")
+    os.makedirs(DATA_DIR, exist_ok=True)
+else:
+    DATA_DIR = APP_DIR
+
+
 def load_channels():
-    local = os.path.join(APP_DIR, "channels.txt")
+    local = os.path.join(DATA_DIR, "channels.txt")
     text = ""
     try:
         with urllib.request.urlopen(CHANNELS_URL, timeout=5) as r:
@@ -44,7 +65,7 @@ def load_channels():
     return urls or DEFAULT_CHANNELS
 
 
-DEST_FILE = os.path.join(APP_DIR, "folder.txt")
+DEST_FILE = os.path.join(DATA_DIR, "folder.txt")
 
 
 def load_choice():
@@ -171,7 +192,7 @@ def download_new_videos(dest_root, channels, event_cb, cancel=None):
 
 def check_for_update(event_cb):
     """Swaps the running exe for the newest GitHub release. Returns new path or None."""
-    if not FROZEN:
+    if not FROZEN or MSIX:  # Store installs are updated by the Store
         return None
     exe = sys.executable
     try:
@@ -205,6 +226,32 @@ def check_for_update(event_cb):
         except OSError:
             pass
         return None
+
+
+def ensure_desktop_shortcut():
+    """Store installs get no desktop icon; point one at the stable execution alias."""
+    if not MSIX:
+        return
+    icon = os.path.join(DATA_DIR, "icon.ico")
+    try:
+        with open(os.path.join(sys._MEIPASS, "icon.ico"), "rb") as src:
+            with open(icon, "wb") as dst:
+                dst.write(src.read())
+    except OSError:
+        return
+    alias = os.path.join(os.environ["LOCALAPPDATA"], "Microsoft", "WindowsApps", "AlexVideoer.exe")
+    ps = (
+        "$ws = New-Object -ComObject WScript.Shell;"
+        "$lnk = Join-Path $ws.SpecialFolders('Desktop') 'Alex Videoer.lnk';"
+        "if (!(Test-Path $lnk)) {"
+        f"$s = $ws.CreateShortcut($lnk); $s.TargetPath = '{alias}';"
+        f"$s.IconLocation = '{icon}'; $s.Save()}}"
+    )
+    subprocess.run(
+        ["powershell", "-NoProfile", "-Command", ps],
+        creationflags=0x08000000,  # CREATE_NO_WINDOW
+        check=False,
+    )
 
 
 class App:
@@ -288,6 +335,7 @@ class App:
         threading.Thread(target=self.update_worker, daemon=True).start()
 
     def update_worker(self):
+        ensure_desktop_shortcut()
         new_exe = check_for_update(self.msgs.put)
         if new_exe:
             self.msgs.put(("status", "Appen er oppdatert og starter på nytt ..."))

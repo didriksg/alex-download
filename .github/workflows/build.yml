@@ -69,11 +69,32 @@ jobs:
           & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           /DAppVersion=$env:GITHUB_RUN_NUMBER installer.iss
 
+      - name: Build MSIX for the Microsoft Store
+        if: vars.MSIX_IDENTITY_NAME != ''
+        shell: pwsh
+        env:
+          IDENTITY_NAME: ${{ vars.MSIX_IDENTITY_NAME }}
+          PUBLISHER: ${{ vars.MSIX_PUBLISHER }}
+          PUBLISHER_DISPLAY: ${{ vars.MSIX_PUBLISHER_DISPLAY }}
+        run: |
+          pip install pillow
+          New-Item -ItemType Directory -Force msix/Assets | Out-Null
+          Copy-Item "dist/Alex Videoer.exe" msix/
+          python -c "from PIL import Image; im = Image.open('icon.png').convert('RGBA'); [im.resize((s, s)).save(f'msix/Assets/{n}.png') for s, n in [(150, 'Square150x150Logo'), (44, 'Square44x44Logo'), (50, 'StoreLogo')]]"
+          (Get-Content AppxManifest.xml) `
+            -replace '__IDENTITY_NAME__', $env:IDENTITY_NAME `
+            -replace '__PUBLISHER__', $env:PUBLISHER `
+            -replace '__PUBLISHER_DISPLAY__', $env:PUBLISHER_DISPLAY `
+            -replace '__RUN__', $env:GITHUB_RUN_NUMBER | Set-Content msix/AppxManifest.xml
+          $makeappx = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\makeappx.exe" | Select-Object -Last 1
+          & $makeappx pack /o /d msix /p "Alex Videoer.msix"
+
       - name: Create release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-        run: >
-          gh release create "v$env:GITHUB_RUN_NUMBER" "dist/Alex Videoer.exe"
-          "installer/AlexVideoerSetup.exe"
-          --title "Alex Videoer v$env:GITHUB_RUN_NUMBER" --notes "Automated build"
+        run: |
+          $assets = @("dist/Alex Videoer.exe", "installer/AlexVideoerSetup.exe")
+          if (Test-Path "Alex Videoer.msix") { $assets += "Alex Videoer.msix" }
+          gh release create "v$env:GITHUB_RUN_NUMBER" @assets `
+            --title "Alex Videoer v$env:GITHUB_RUN_NUMBER" --notes "Automated build"

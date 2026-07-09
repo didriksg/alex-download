@@ -10,6 +10,37 @@ Design: `docs/superpowers/specs/2026-07-05-alex-videoer-design.md`.
 Every push to `main` builds `Alex Videoer.exe` plus an installer
 (`AlexVideoerSetup.exe`) and publishes a GitHub release (v1, v2, ...).
 
+## Microsoft Store (delivery path for Alex)
+
+The Store is the one channel where a downloaded app shows no SmartScreen,
+Defender, or publisher warnings on any Windows 10/11 machine: Microsoft
+signs and delivers the package. Alex's whole install is: open the link,
+click Installer. On first launch the app puts a shortcut on his desktop,
+and the Store handles updates from then on.
+
+One-time setup (Didrik):
+
+1. Register a free individual developer account at
+   https://partner.microsoft.com (personal Microsoft account, "Individual",
+   ID verification; the old $19 fee is waived since Sept 2025).
+2. Reserve the app name "Alex Videoer" (Apps and games > New product).
+3. From the product's "Product identity" page, copy the three values into
+   GitHub repo variables (Settings > Secrets and variables > Actions >
+   Variables): `MSIX_IDENTITY_NAME` (Package/Identity/Name),
+   `MSIX_PUBLISHER` (Package/Identity/Publisher, the `CN=...` string), and
+   `MSIX_PUBLISHER_DISPLAY` (Package/Identity/PublisherDisplayName).
+4. Run the workflow; download `Alex.Videoer.msix` from the release and
+   upload it in the Partner Center submission. Under Discoverability pick
+   "hidden in the Store, available only with a direct link" so only Alex's
+   link finds it. Certification typically takes 1-3 days.
+5. Send Alex the `apps.microsoft.com` link.
+
+Per update: upload the new msix from the latest release as a new
+submission (the Store build does not self-update; the Store updates it).
+Channel changes still need no submission at all, `channels.txt` is fetched
+live from GitHub. Ask Claude to automate submissions with the msstore CLI
+if uploads get tedious.
+
 ## First install on Alex's PC (no scary dialogs)
 
 SmartScreen's "unknown publisher" dialog only fires on files that carry
