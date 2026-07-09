@@ -32,7 +32,15 @@ Setup checklist:
 4. Newer Windows 11 installs may have Smart App Control on (Settings >
    Privacy & security > Windows Security > App & browser control), which
    blocks unsigned apps regardless of mark-of-the-web. If it is On, turn it
-   off during setup (one-way switch, so decide deliberately).
+   off during setup (one-way switch, so decide deliberately). Windows 10
+   does not have it, and it only ships enabled on fresh Windows 11 installs.
+
+No physical access to the PC: run the same checklist over Quick Assist
+(built into Windows 10 and 11; Alex or a helper reads you a 6-digit code
+and clicks Allow, then you drive). Downloading the installer during that
+session shows the SmartScreen warning to you, not him; click through it,
+install, and updates are silent from then on. Never send Alex a download
+link; the browser download is the only path that shows the warning.
 
 Why not code signing: Microsoft's Artifact Signing (formerly Trusted
 Signing) only onboards individuals in US/Canada and organizations in
