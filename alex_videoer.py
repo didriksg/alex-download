@@ -185,7 +185,10 @@ def check_for_update(event_cb):
             rel = json.load(r)
         if int(rel["tag_name"].lstrip("v")) <= VERSION:
             return None
-        asset = next(a for a in rel["assets"] if a["name"].endswith(".exe"))
+        asset = next(
+            a for a in rel["assets"]
+            if a["name"].endswith(".exe") and "Setup" not in a["name"]
+        )
         event_cb(("status", "Laster ned oppdatering ..."))
 
         def report(blocks, bs, total):

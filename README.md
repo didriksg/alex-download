@@ -7,10 +7,18 @@ Design: `docs/superpowers/specs/2026-07-05-alex-videoer-design.md`.
 
 ## Build and deliver
 
-Every push to `main` builds `Alex Videoer.exe` and publishes a GitHub release
-(v1, v2, ...). First delivery: download the exe from Releases and hand it
+Every push to `main` builds `Alex Videoer.exe` plus an installer
+(`AlexVideoerSetup.exe`) and publishes a GitHub release (v1, v2, ...).
+First delivery: download `AlexVideoerSetup.exe` from Releases and hand it
 over on a USB stick (FAT32/exFAT carries no mark-of-the-web, so SmartScreen
-stays quiet). Put it on Alex's desktop, for example.
+stays quiet). Running it installs the app per-user (no admin prompt) with a
+desktop and Start Menu shortcut, then starts it.
+
+The exe is unsigned, so a copy downloaded straight from the internet gets a
+SmartScreen "unknown publisher" warning: click "More info" then "Run anyway"
+(or right-click the file, Properties, Unblock). This is one-time; self-updates
+do not retrigger it. Making the warning disappear entirely requires a code
+signing certificate (e.g. Azure Trusted Signing, ~$10/month).
 
 ## Updates
 

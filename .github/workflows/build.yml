@@ -37,14 +37,37 @@ jobs:
 
       - name: Set version
         shell: pwsh
-        run: Set-Content _version.py "VERSION = $env:GITHUB_RUN_NUMBER"
+        run: |
+          Set-Content _version.py "VERSION = $env:GITHUB_RUN_NUMBER"
+          @"
+          VSVersionInfo(
+            ffi=FixedFileInfo(filevers=(1, 0, $env:GITHUB_RUN_NUMBER, 0), prodvers=(1, 0, $env:GITHUB_RUN_NUMBER, 0)),
+            kids=[
+              StringFileInfo([StringTable('040904B0', [
+                StringStruct('CompanyName', 'Alex Videoer'),
+                StringStruct('FileDescription', 'Alex Videoer'),
+                StringStruct('ProductName', 'Alex Videoer'),
+                StringStruct('FileVersion', '1.0.$env:GITHUB_RUN_NUMBER.0'),
+                StringStruct('ProductVersion', '1.0.$env:GITHUB_RUN_NUMBER.0'),
+                StringStruct('OriginalFilename', 'Alex Videoer.exe')])]),
+              VarFileInfo([VarStruct('Translation', [1033, 1200])])
+            ]
+          )
+          "@ | Set-Content version_info.txt
 
       - name: Build exe
         run: >
           pyinstaller --onefile --windowed --name "Alex Videoer" --icon icon.ico
+          --version-file version_info.txt
           --add-binary "ffmpeg.exe;." --add-binary "deno.exe;." --add-data "icon.ico;."
           --collect-all customtkinter --collect-all yt_dlp_ejs
           alex_videoer.py
+
+      - name: Build installer
+        shell: pwsh
+        run: >
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          /DAppVersion=$env:GITHUB_RUN_NUMBER installer.iss
 
       - name: Create release
         shell: pwsh
@@ -52,4 +75,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: >
           gh release create "v$env:GITHUB_RUN_NUMBER" "dist/Alex Videoer.exe"
+          "installer/AlexVideoerSetup.exe"
           --title "Alex Videoer v$env:GITHUB_RUN_NUMBER" --notes "Automated build"
