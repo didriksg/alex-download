@@ -9,16 +9,37 @@ Design: `docs/superpowers/specs/2026-07-05-alex-videoer-design.md`.
 
 Every push to `main` builds `Alex Videoer.exe` plus an installer
 (`AlexVideoerSetup.exe`) and publishes a GitHub release (v1, v2, ...).
-First delivery: download `AlexVideoerSetup.exe` from Releases and hand it
-over on a USB stick (FAT32/exFAT carries no mark-of-the-web, so SmartScreen
-stays quiet). Running it installs the app per-user (no admin prompt) with a
-desktop and Start Menu shortcut, then starts it.
 
-The exe is unsigned, so a copy downloaded straight from the internet gets a
-SmartScreen "unknown publisher" warning: click "More info" then "Run anyway"
-(or right-click the file, Properties, Unblock). This is one-time; self-updates
-do not retrigger it. Making the warning disappear entirely requires a code
-signing certificate (e.g. Azure Trusted Signing, ~$10/month).
+## First install on Alex's PC (no scary dialogs)
+
+SmartScreen's "unknown publisher" dialog only fires on files that carry
+mark-of-the-web, which only a browser download adds. Alex's copy never has
+it: the first install arrives on a USB stick, and every later update is
+written by the app itself; neither path carries the mark. The warning you
+see when downloading the exe from GitHub on a Windows machine stays on that
+machine.
+
+Setup checklist:
+
+1. Copy `AlexVideoerSetup.exe` from Releases onto a FAT32 or exFAT USB
+   stick (these filesystems cannot store mark-of-the-web).
+2. Run it on his PC: installs per-user (no admin/UAC prompt), creates
+   desktop and Start Menu shortcuts, starts the app.
+3. In an admin PowerShell, exclude the app folder from Defender so a future
+   build can never be false-positive quarantined (unsigned PyInstaller exes
+   occasionally trip AV heuristics on new definition updates):
+   `Add-MpPreference -ExclusionPath "C:\Users\<alex>\AppData\Local\Programs\Alex Videoer"`
+4. Newer Windows 11 installs may have Smart App Control on (Settings >
+   Privacy & security > Windows Security > App & browser control), which
+   blocks unsigned apps regardless of mark-of-the-web. If it is On, turn it
+   off during setup (one-way switch, so decide deliberately).
+
+Why not code signing: Microsoft's Artifact Signing (formerly Trusted
+Signing) only onboards individuals in US/Canada and organizations in
+US/CA/EU/UK, and through 2026 has had recurring SmartScreen regressions
+even for paying customers (Azure/artifact-signing-action#128). Classic
+OV/EV certificates cost $200-450/year and still warn until reputation
+builds per release. The USB + self-update flow above needs none of it.
 
 ## Updates
 
