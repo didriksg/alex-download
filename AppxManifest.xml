@@ -12,7 +12,8 @@
             Version="1.0.__RUN__.0"
             ProcessorArchitecture="x64"/>
   <Properties>
-    <DisplayName>Alex Videoer</DisplayName>
+    <!-- Must exactly match the name reserved in Partner Center -->
+    <DisplayName>Daniel Alexander Tabletennis Video Nedlaster</DisplayName>
     <PublisherDisplayName>__PUBLISHER_DISPLAY__</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
@@ -24,7 +25,7 @@
   </Resources>
   <Applications>
     <Application Id="AlexVideoer" Executable="Alex Videoer.exe" EntryPoint="Windows.FullTrustApplication">
-      <uap:VisualElements DisplayName="Alex Videoer"
+      <uap:VisualElements DisplayName="Daniel Alexander Tabletennis Video Nedlaster"
                           Description="Laster ned nye videoer fra faste YouTube-kanaler"
                           BackgroundColor="transparent"
                           Square150x150Logo="Assets\Square150x150Logo.png"
