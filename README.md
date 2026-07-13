@@ -1,91 +1,18 @@
 # Alex Videoer
 
-One-button Windows app that downloads new videos from fixed YouTube channels
-to the PC (`~/Videos`) or a USB stick, a remembered two-way toggle. The same
-button stops an ongoing run. The UI is in Norwegian; Alex is the end user.
-Design: `docs/superpowers/specs/2026-07-05-alex-videoer-design.md`.
+One-button Windows app that downloads new videos from a fixed list of
+YouTube channels to the PC or a USB stick. The UI is in Norwegian.
 
-## Build and deliver
+## Build
 
-Every push to `main` builds `Alex Videoer.exe` plus an installer
-(`AlexVideoerSetup.exe`) and publishes a GitHub release (v1, v2, ...).
+Every push to `main` builds the app and publishes a GitHub release with
+three artifacts:
 
-## Microsoft Store (delivery path for Alex)
-
-The Store is the one channel where a downloaded app shows no SmartScreen,
-Defender, or publisher warnings on any Windows 10/11 machine: Microsoft
-signs and delivers the package. Alex's whole install is: open the link,
-click Installer. On first launch the app puts a shortcut on his desktop,
-and the Store handles updates from then on.
-
-One-time setup (Didrik):
-
-1. Register a free individual developer account at
-   https://partner.microsoft.com (personal Microsoft account, "Individual",
-   ID verification; the old $19 fee is waived since Sept 2025).
-2. Reserve the app name "Alex Videoer" (Apps and games > New product).
-3. From the product's "Product identity" page, copy the three values into
-   GitHub repo variables (Settings > Secrets and variables > Actions >
-   Variables): `MSIX_IDENTITY_NAME` (Package/Identity/Name),
-   `MSIX_PUBLISHER` (Package/Identity/Publisher, the `CN=...` string), and
-   `MSIX_PUBLISHER_DISPLAY` (Package/Identity/PublisherDisplayName).
-4. Run the workflow; download `Alex.Videoer.msix` from the release and
-   upload it in the Partner Center submission. Under Discoverability pick
-   "hidden in the Store, available only with a direct link" so only Alex's
-   link finds it. Certification typically takes 1-3 days.
-5. Send Alex the `apps.microsoft.com` link.
-
-Per update: upload the new msix from the latest release as a new
-submission (the Store build does not self-update; the Store updates it).
-Channel changes still need no submission at all, `channels.txt` is fetched
-live from GitHub. Ask Claude to automate submissions with the msstore CLI
-if uploads get tedious.
-
-## First install on Alex's PC (no scary dialogs)
-
-SmartScreen's "unknown publisher" dialog only fires on files that carry
-mark-of-the-web, which only a browser download adds. Alex's copy never has
-it: the first install arrives on a USB stick, and every later update is
-written by the app itself; neither path carries the mark. The warning you
-see when downloading the exe from GitHub on a Windows machine stays on that
-machine.
-
-Setup checklist:
-
-1. Copy `AlexVideoerSetup.exe` from Releases onto a FAT32 or exFAT USB
-   stick (these filesystems cannot store mark-of-the-web).
-2. Run it on his PC: installs per-user (no admin/UAC prompt), creates
-   desktop and Start Menu shortcuts, starts the app.
-3. In an admin PowerShell, exclude the app folder from Defender so a future
-   build can never be false-positive quarantined (unsigned PyInstaller exes
-   occasionally trip AV heuristics on new definition updates):
-   `Add-MpPreference -ExclusionPath "C:\Users\<alex>\AppData\Local\Programs\Alex Videoer"`
-4. Newer Windows 11 installs may have Smart App Control on (Settings >
-   Privacy & security > Windows Security > App & browser control), which
-   blocks unsigned apps regardless of mark-of-the-web. If it is On, turn it
-   off during setup (one-way switch, so decide deliberately). Windows 10
-   does not have it, and it only ships enabled on fresh Windows 11 installs.
-
-No physical access to the PC: run the same checklist over Quick Assist
-(built into Windows 10 and 11; Alex or a helper reads you a 6-digit code
-and clicks Allow, then you drive). Downloading the installer during that
-session shows the SmartScreen warning to you, not him; click through it,
-install, and updates are silent from then on. Never send Alex a download
-link; the browser download is the only path that shows the warning.
-
-Why not code signing: Microsoft's Artifact Signing (formerly Trusted
-Signing) only onboards individuals in US/Canada and organizations in
-US/CA/EU/UK, and through 2026 has had recurring SmartScreen regressions
-even for paying customers (Azure/artifact-signing-action#128). Classic
-OV/EV certificates cost $200-450/year and still warn until reputation
-builds per release. The USB + self-update flow above needs none of it.
-
-## Updates
-
-The app checks for a new release at every startup and replaces itself
-automatically. Pushing to `main` (or running the workflow manually, e.g. to
-pick up a new yt-dlp when YouTube changes) is all it takes; Alex gets the
-update the next time he opens the app.
+- `Alex Videoer.exe`: portable exe, self-updates from GitHub releases
+- `AlexVideoerSetup.exe`: per-user installer with desktop and Start Menu
+  shortcuts
+- `Alex.Videoer.msix`: Microsoft Store package, built when the `MSIX_*`
+  repo variables are set; Store builds are updated through the Store
 
 ## Changing channels
 
